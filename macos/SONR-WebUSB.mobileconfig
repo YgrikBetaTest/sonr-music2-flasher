@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>PayloadContent</key>
+  <array>
+    <dict>
+      <key>PayloadType</key>
+      <string>com.google.Chrome</string>
+      <key>PayloadVersion</key>
+      <integer>1</integer>
+      <key>PayloadIdentifier</key>
+      <string>md.garage.sonr.flasher.chrome</string>
+      <key>PayloadUUID</key>
+      <string>A1B2C3D4-0001-4A5B-8C6D-1E2F3A4B5C61</string>
+      <key>PayloadEnabled</key>
+      <true/>
+      <key>PayloadDisplayName</key>
+      <string>Chrome - SONR Music 2 WebUSB</string>
+      <key>WebUsbAllowDevicesForUrls</key>
+      <array>
+        <dict>
+          <key>devices</key>
+          <array>
+            <dict>
+              <key>vendor_id</key>
+              <integer>17224</integer>
+              <key>product_id</key>
+              <integer>21984</integer>
+            </dict>
+          </array>
+          <key>urls</key>
+          <array>
+            <string>https://ygrikbetatest.github.io</string>
+          </array>
+        </dict>
+      </array>
+    </dict>
+    <dict>
+      <key>PayloadType</key>
+      <string>com.microsoft.Edge</string>
+      <key>PayloadVersion</key>
+      <integer>1</integer>
+      <key>PayloadIdentifier</key>
+      <string>md.garage.sonr.flasher.edge</string>
+      <key>PayloadUUID</key>
+      <string>A1B2C3D4-0002-4A5B-8C6D-1E2F3A4B5C62</string>
+      <key>PayloadEnabled</key>
+      <true/>
+      <key>PayloadDisplayName</key>
+      <string>Edge - SONR Music 2 WebUSB</string>
+      <key>WebUsbAllowDevicesForUrls</key>
+      <array>
+        <dict>
+          <key>devices</key>
+          <array>
+            <dict>
+              <key>vendor_id</key>
+              <integer>17224</integer>
+              <key>product_id</key>
+              <integer>21984</integer>
+            </dict>
+          </array>
+          <key>urls</key>
+          <array>
+            <string>https://ygrikbetatest.github.io</string>
+          </array>
+        </dict>
+      </array>
+    </dict>
+  </array>
+  <key>PayloadType</key>
+  <string>Configuration</string>
+  <key>PayloadVersion</key>
+  <integer>1</integer>
+  <key>PayloadIdentifier</key>
+  <string>md.garage.sonr.flasher</string>
+  <key>PayloadUUID</key>
+  <string>A1B2C3D4-0000-4A5B-8C6D-1E2F3A4B5C60</string>
+  <key>PayloadDisplayName</key>
+  <string>SONR Music 2 WebUSB (Chrome/Edge)</string>
+  <key>PayloadDescription</key>
+  <string>Grants standing WebUSB permission to the SONR Music 2 bootloader (VID 0x4348 / PID 0x55E0) so the flasher needs no device picker.</string>
+  <key>PayloadOrganization</key>
+  <string>SONR / Garage</string>
+  <key>PayloadScope</key>
+  <string>System</string>
+</dict>
+</plist>
