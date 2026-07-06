@@ -1,0 +1,584 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SONR Music 2 — Firmware Flasher</title>
+<style>
+  :root {
+    --bg:#0b0e13; --bg2:#0e1219; --card:#161b24; --card2:#1b2130; --line:#252c3a;
+    --fg:#eef1f7; --muted:#98a2b6; --accent:#38c26b; --accent-d:#2aa259;
+    --blue:#3b9bf0; --danger:#ec5b60; --warn:#f5b23b;
+    --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  * { box-sizing:border-box; }
+  html,body { overflow-x:hidden; }
+  body {
+    margin:0; min-height:100vh;
+    font:15px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    color:var(--fg);
+    background:
+      radial-gradient(1100px 500px at 50% -10%, #1a2a3f 0%, rgba(26,42,63,0) 60%),
+      linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%);
+    background-attachment:fixed;
+    display:flex; justify-content:center; padding:32px 16px 48px;
+  }
+  .wrap { width:100%; max-width:560px; animation:rise .5s ease both; }
+  @keyframes rise { from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:none} }
+
+  .brand { display:flex; align-items:center; gap:12px; margin-bottom:6px; }
+  .logo {
+    width:40px; height:40px; border-radius:11px; flex:none;
+    background:linear-gradient(135deg,var(--accent),#1f8f4d);
+    display:grid; place-items:center; box-shadow:var(--shadow);
+  }
+  .logo svg { width:22px; height:22px; }
+  h1 { font-size:21px; font-weight:700; margin:0; letter-spacing:.2px; }
+  .sub { color:var(--muted); margin:0 0 22px 52px; font-size:13.5px; }
+
+  .card {
+    background:linear-gradient(180deg,var(--card),var(--card2));
+    border:1px solid var(--line); border-radius:16px; padding:20px 20px 22px;
+    margin-bottom:16px; box-shadow:var(--shadow);
+  }
+  .card h2 { font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted);
+    margin:0 0 14px; font-weight:700; }
+
+  /* steps */
+  .steps { counter-reset:s; list-style:none; margin:0; padding:0; }
+  .steps li { position:relative; padding:9px 0 9px 44px; color:#cfd6e4; }
+  .steps li + li { border-top:1px dashed rgba(255,255,255,.05); }
+  .steps li::before {
+    counter-increment:s; content:counter(s);
+    position:absolute; left:0; top:8px; width:28px; height:28px; border-radius:50%;
+    background:radial-gradient(circle at 30% 30%,#2b3446,#1b2230);
+    border:1px solid var(--line); color:#fff; font-size:13px; font-weight:700;
+    display:grid; place-items:center;
+  }
+  .hold { color:var(--warn); font-weight:700; white-space:nowrap; }
+  kbd {
+    font:inherit; font-weight:700; background:#0d1017; border:1px solid var(--line);
+    border-bottom-width:2px; border-radius:6px; padding:0 6px; color:#fff;
+  }
+
+  /* animated arrow cue */
+  .cue { display:none; flex-direction:column; align-items:center; gap:0; margin:2px 0 10px; }
+  .cue.show { display:flex; }
+  .cue .label { font-size:12.5px; font-weight:700; color:var(--accent); letter-spacing:.03em;
+    margin-bottom:2px; animation:glow 1.6s ease-in-out infinite; }
+  .cue .chevs { display:flex; flex-direction:column; align-items:center; height:34px; }
+  .cue .chev { width:26px; height:11px; color:var(--accent); margin-top:-4px; animation:bob 1.3s infinite; }
+  .cue .chev:nth-child(1){ animation-delay:0s; opacity:.35; }
+  .cue .chev:nth-child(2){ animation-delay:.15s; opacity:.65; }
+  .cue .chev:nth-child(3){ animation-delay:.3s; opacity:1; }
+  @keyframes bob { 0%,100%{ transform:translateY(-3px) } 50%{ transform:translateY(3px) } }
+  @keyframes glow { 0%,100%{ opacity:.6 } 50%{ opacity:1 } }
+  .cue.up .chevs { flex-direction:column-reverse; }
+  .cue.up .chev { transform:scaleY(-1); }
+
+  /* guide card: illustration shown while picking the device */
+  #guideCard.hide { display:none !important; }
+  .card.guide { animation:rise .3s ease both; }
+  .guide-art { display:flex; justify-content:center; padding:2px 0 12px; }
+  .guide-art svg { width:100%; max-width:320px; height:auto; }
+  .guide-cap { text-align:center; color:#d3dae7; margin:0; font-size:14px; }
+  /* guide illustration — one 4.2s loop: press "+"  ->  cable reaches the PC  ->  release "+" */
+  .anim-finger { transform-box:fill-box; transform-origin:center; animation:fingerSeq 4.2s ease-in-out infinite; }
+  @keyframes fingerSeq { 0%{transform:translateY(-17px)} 14%{transform:translateY(0)}
+    66%{transform:translateY(0)} 80%,100%{transform:translateY(-17px)} }
+  .anim-plus { transform-box:fill-box; transform-origin:center; animation:plusOn 4.2s ease-in-out infinite; }
+  @keyframes plusOn { 0%,12%{filter:none} 20%{filter:drop-shadow(0 0 5px var(--accent))}
+    66%{filter:drop-shadow(0 0 5px var(--accent))} 80%,100%{filter:none} }
+  .anim-ring { transform-box:fill-box; transform-origin:center; animation:ringOnce 4.2s ease-out infinite; }
+  @keyframes ringOnce { 0%,12%{transform:scale(.55);opacity:0} 15%{transform:scale(.55);opacity:.85}
+    32%{transform:scale(1.9);opacity:0} 100%{transform:scale(1.9);opacity:0} }
+  .anim-cable { stroke-dasharray:200; animation:cableDraw 4.2s ease-in-out infinite; }
+  @keyframes cableDraw { 0%,22%{stroke-dashoffset:200} 46%{stroke-dashoffset:0}
+    84%{stroke-dashoffset:0} 92%,100%{stroke-dashoffset:200} }
+  .anim-pc { animation:pcOn 4.2s ease-in-out infinite; }
+  @keyframes pcOn { 0%,44%{opacity:0} 52%{opacity:1} 86%{opacity:1} 94%,100%{opacity:0} }
+
+  /* "device detected" checkmark (shown in place of the animation once the board is in BOOT) */
+  .detected-art { display:flex; justify-content:center; padding:4px 0 12px; }
+  .detected-art svg { width:112px; height:112px; }
+  .det-ring { transform-box:fill-box; transform-origin:center; animation:detpop .45s ease-out both; }
+  @keyframes detpop { 0%{transform:scale(.5);opacity:0} 70%{transform:scale(1.06)} 100%{transform:scale(1);opacity:.14} }
+  .det-check { stroke-dasharray:80; stroke-dashoffset:80; animation:detdraw .5s .12s ease-out forwards; }
+  @keyframes detdraw { to { stroke-dashoffset:0 } }
+
+  /* short arrow emanating from the guide card toward the top-left, where the picker appears.
+     Anchored inside the (centered, lower) card, so the pop-up never covers it at any width. */
+  .picker-arrow { display:flex; align-items:center; gap:11px; margin:-2px 0 12px; }
+  .picker-arrow.hide { display:none !important; }
+  .pa-curve { width:46px; height:auto; flex:none; color:var(--accent);
+    filter:drop-shadow(0 1px 3px rgba(0,0,0,.4)); animation:drift 1.3s ease-in-out infinite; }
+  @keyframes drift { 0%,100%{ transform:translate(2.5px,2.5px) } 50%{ transform:translate(-2.5px,-2.5px) } }
+  .pa-pill { background:linear-gradient(180deg,var(--accent),var(--accent-d)); color:#fff;
+    font-weight:700; font-size:13px; padding:9px 14px; border-radius:11px; box-shadow:var(--shadow); }
+
+  /* status */
+  .status {
+    display:flex; align-items:center; gap:11px; padding:13px 15px; border-radius:12px;
+    background:#0c1017; border:1px solid var(--line); margin-bottom:16px; min-height:52px;
+  }
+  .dot { width:11px; height:11px; border-radius:50%; background:var(--muted); flex:none;
+    box-shadow:0 0 0 4px rgba(152,162,182,.12); }
+  .dot.ok { background:var(--accent); box-shadow:0 0 0 4px rgba(56,194,107,.18); }
+  .dot.busy { background:var(--warn); box-shadow:0 0 0 4px rgba(245,178,59,.18); animation:pulse 1s infinite; }
+  .dot.err { background:var(--danger); box-shadow:0 0 0 4px rgba(236,91,96,.18); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+  #statusText { font-size:14px; }
+
+  /* buttons */
+  .btns { display:flex; gap:10px; }
+  button {
+    font:inherit; font-weight:700; border:0; border-radius:12px; padding:15px 18px;
+    cursor:pointer; color:#fff; transition:transform .08s, filter .15s, opacity .15s, box-shadow .2s;
+  }
+  button:active { transform:translateY(1px); }
+  button:disabled { opacity:.4; cursor:not-allowed; }
+  .btn-primary {
+    flex:1; font-size:16.5px;
+    background:linear-gradient(180deg,var(--accent),var(--accent-d));
+    box-shadow:0 8px 20px rgba(56,194,107,.28);
+  }
+  .btn-primary:not(:disabled):hover { filter:brightness(1.06); box-shadow:0 10px 26px rgba(56,194,107,.4); }
+  .btn-primary.pulse { animation:btnpulse 1.8s ease-in-out infinite; }
+  @keyframes btnpulse { 0%,100%{ box-shadow:0 8px 20px rgba(56,194,107,.28) }
+    50%{ box-shadow:0 8px 30px rgba(56,194,107,.6) } }
+  .btn-ghost { background:#222a38; color:#cfd6e4; }
+  .btn-ghost:not(:disabled):hover { background:#2a3342; }
+
+  /* progress */
+  .bars { display:none; margin-top:16px; }
+  .bars.show { display:block; animation:rise .3s ease both; }
+  .bar { margin:11px 0; }
+  .bar .lbl { display:flex; justify-content:space-between; font-size:12.5px; color:var(--muted); margin-bottom:5px; }
+  .bar .lbl b { color:#dbe2ee; font-weight:600; }
+  .track { height:9px; background:#0c1017; border:1px solid var(--line); border-radius:7px; overflow:hidden; }
+  .fill { height:100%; width:0; border-radius:7px;
+    background:linear-gradient(90deg,var(--accent),#57d98a); transition:width .12s ease; }
+
+  .fwmeta { font-size:12.5px; color:var(--muted); margin-top:14px; }
+
+  details { margin-top:14px; }
+  summary { cursor:pointer; color:var(--muted); font-size:13px; list-style:none; user-select:none; }
+  summary::-webkit-details-marker { display:none; }
+  summary::before { content:"›"; display:inline-block; margin-right:6px; transition:transform .2s; }
+  details[open] summary::before { transform:rotate(90deg); }
+  #log {
+    margin-top:11px; background:#080b10; border:1px solid var(--line); border-radius:10px;
+    padding:11px; height:200px; overflow:auto; white-space:pre-wrap; color:#c3ccdb;
+    font:12px/1.55 ui-monospace,"Cascadia Code",Consolas,monospace;
+  }
+
+  .banner { padding:12px 14px; border-radius:11px; font-size:13px; margin-bottom:16px; }
+  .banner.err { background:#2a1315; border:1px solid #5a2327; color:#ffb4b7; }
+  .foot { font-size:12.5px; color:var(--muted); margin-top:2px; }
+  .foot a { color:var(--blue); text-decoration:none; }
+  .foot a:hover { text-decoration:underline; }
+
+  /* "press + now" modal — impossible to miss after pressing Update */
+  .modal { position:fixed; inset:0; z-index:120; display:flex; align-items:center; justify-content:center;
+    padding:20px; background:rgba(4,7,12,.74); }
+  .modal-card { background:linear-gradient(180deg,var(--card),var(--card2)); border:1px solid var(--line);
+    border-radius:20px; padding:30px 32px; text-align:center; max-width:380px; box-shadow:var(--shadow);
+    animation:rise .25s ease both; }
+  .plus-badge { width:96px; height:96px; margin:0 auto 18px; border-radius:50%; color:#fff;
+    background:linear-gradient(180deg,var(--accent),var(--accent-d));
+    font:800 62px/96px system-ui,sans-serif; animation:plusPulse 1.1s ease-in-out infinite; }
+  @keyframes plusPulse {
+    0%,100% { box-shadow:0 0 0 0 rgba(56,194,107,.55); transform:scale(1); }
+    50%      { box-shadow:0 0 0 24px rgba(56,194,107,0); transform:scale(1.06); } }
+  .modal-title { font-size:21px; font-weight:800; margin-bottom:9px; }
+  .modal-sub { color:var(--muted); font-size:14px; line-height:1.5; }
+
+  .hide { display:none !important; }
+</style>
+</head>
+<body>
+<div id="plusModal" class="modal hide">
+  <div class="modal-card">
+    <div class="plus-badge">+</div>
+    <div class="modal-title">Press “+”</div>
+    <div class="modal-sub">One press on the “+” button starts the update — you don't need to hold it.</div>
+  </div>
+</div>
+<div class="wrap">
+  <div class="brand">
+    <div class="logo">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M9 18V5l10-2v13" stroke="#fff" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round"/><circle cx="6" cy="18" r="3" fill="#fff"/>
+        <circle cx="16" cy="16" r="3" fill="#fff"/></svg>
+    </div>
+    <h1>SONR Music&nbsp;2 — Firmware Flasher</h1>
+  </div>
+  <p class="sub">Flash your device straight from the browser. No install needed. Use Chrome or Edge.</p>
+
+  <div id="unsupported" class="banner err hide">
+    This browser doesn't support WebUSB. Open this page in <b>Chrome</b> or <b>Edge</b>
+    on a computer (not a phone).
+  </div>
+
+  <div class="card">
+    <h2>How to flash</h2>
+    <ol class="steps">
+      <li><span class="hold">Hold the “+” button</span> and plug in the USB cable.</li>
+      <li>Check the device LED — it must be <b>off</b>. If it's lit, unplug and reconnect while
+          holding “+”.</li>
+      <li>Once the LED is off, release “+” and press <b>“Update”</b>.</li>
+      <li>When the pop-up appears, <span class="hold">press “+” once</span> — that starts the update.
+          Wait for the confetti 🎉.</li>
+    </ol>
+  </div>
+
+  <div id="guideCard" class="card guide">
+    <!-- STEP: plug (shown before the pop-up) -->
+    <div id="stepPlug">
+    <div class="guide-art">
+      <svg viewBox="0 0 340 152" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- DEVICE (left) -->
+        <rect x="26" y="22" width="84" height="106" rx="14" fill="#1b2230" stroke="#33405a" stroke-width="2.5"/>
+        <g fill="#33405a"><circle cx="59" cy="38" r="1.7"/><circle cx="68" cy="38" r="1.7"/><circle cx="77" cy="38" r="1.7"/></g>
+        <!-- + button: press ring (ripples on press) + glowing button -->
+        <circle class="anim-ring" cx="68" cy="86" r="16" fill="none" stroke="#38c26b" stroke-width="2.5"/>
+        <g class="anim-plus">
+          <circle cx="68" cy="86" r="16" fill="#38c26b"/>
+          <path d="M68 78 V94 M60 86 H76" stroke="#fff" stroke-width="3.4" stroke-linecap="round"/>
+        </g>
+        <!-- single index finger pressing "+" (angled, with nail + knuckle creases) -->
+        <g class="anim-finger">
+          <g transform="rotate(33 69 72)">
+            <rect x="60" y="32" width="17" height="42" rx="8.5" fill="#f2d6ba" stroke="#cfa377" stroke-width="2"/>
+            <!-- fingernail at the tip -->
+            <rect x="62" y="63" width="13" height="9" rx="4" fill="#fdf1e4" stroke="#cfa377" stroke-width="1"/>
+            <!-- knuckle creases -->
+            <path d="M60.5 50 h16" stroke="#cfa377" stroke-width="1.3" opacity=".4"/>
+            <path d="M61 42 h15" stroke="#cfa377" stroke-width="1.1" opacity=".28"/>
+          </g>
+        </g>
+        <!-- CABLE device -> PC (draws in during phase 2) -->
+        <rect x="202" y="82" width="9" height="10" rx="1.5" fill="#4a5872"/>
+        <path class="anim-cable" d="M110 93 C 150 93 168 87 205 87" stroke="#5a6b86"
+          stroke-width="3.2" stroke-linecap="round"/>
+        <!-- PC (right, laptop) -->
+        <rect x="210" y="44" width="106" height="60" rx="6" fill="#1b2230" stroke="#33405a" stroke-width="2.5"/>
+        <rect x="218" y="51" width="90" height="46" rx="3" fill="#0c1017"/>
+        <rect class="anim-pc" x="218" y="51" width="90" height="46" rx="3" fill="#123a22"/>
+        <path class="anim-pc" d="M252 75 l6 6 13 -14" stroke="#4fe08a" stroke-width="3"
+          fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M196 106 H326 L318 120 H204 Z" fill="#222c3e" stroke="#33405a" stroke-width="2.5" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <p class="guide-cap">Hold <span class="hold">“+”</span> and plug the device into the computer.
+       When the LED is off, release “+” and press <b>Update</b>.</p>
+    </div><!-- /stepPlug -->
+
+    <!-- STEP: detected (board is present in BOOT, LED off) -->
+    <div id="stepDetected" class="hide">
+      <div class="detected-art">
+        <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle class="det-ring" cx="60" cy="60" r="54" fill="#38c26b" opacity=".14"/>
+          <circle cx="60" cy="60" r="54" fill="none" stroke="#38c26b" stroke-width="5" opacity=".35"/>
+          <path class="det-check" d="M37 62 l16 16 l31 -34" fill="none" stroke="#38c26b"
+            stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <p class="guide-cap"><b>Device detected.</b> Release <span class="hold">“+”</span> and press
+        <b>Update</b>.</p>
+    </div>
+
+    <!-- STEP: pick (shown once the pop-up is open) -->
+    <div id="stepPick" class="hide">
+      <div class="picker-arrow">
+        <svg class="pa-curve" viewBox="0 0 54 54" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M48 48 C 34 40 30 24 17 15" stroke="currentColor" stroke-width="5"
+            fill="none" stroke-linecap="round"/>
+          <path d="M17 30 L15 13 L32 16" stroke="currentColor" stroke-width="5"
+            fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <div class="pa-pill">Select your device in the pop-up, then click <b>Connect</b></div>
+      </div>
+      <p class="guide-cap" style="margin-top:8px">Nearly there — pick your device and hit Connect.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="status hide" id="statusBox">
+      <span id="dot" class="dot"></span>
+      <span id="statusText"></span>
+    </div>
+
+    <div id="cue" class="cue">
+      <span class="label" id="cueLabel">Start here</span>
+      <span class="chevs">
+        <svg class="chev" viewBox="0 0 26 11"><path d="M2 2l11 7 11-7" stroke="currentColor"
+          stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <svg class="chev" viewBox="0 0 26 11"><path d="M2 2l11 7 11-7" stroke="currentColor"
+          stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <svg class="chev" viewBox="0 0 26 11"><path d="M2 2l11 7 11-7" stroke="currentColor"
+          stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </span>
+    </div>
+
+    <div class="btns">
+      <button id="btnConnect" class="btn-primary" disabled>Update</button>
+    </div>
+
+    <div id="bars" class="bars">
+      <div class="bar"><div class="lbl"><span>Erase</span><b id="pErase">—</b></div>
+        <div class="track"><div id="fErase" class="fill"></div></div></div>
+      <div class="bar"><div class="lbl"><span>Write</span><b id="pProg">—</b></div>
+        <div class="track"><div id="fProg" class="fill"></div></div></div>
+      <div class="bar"><div class="lbl"><span>Verify</span><b id="pVer">—</b></div>
+        <div class="track"><div id="fVer" class="fill"></div></div></div>
+    </div>
+
+    <div id="fwMeta" class="fwmeta"></div>
+
+    <details>
+      <summary>Show details</summary>
+      <div style="margin-top:10px">
+        <button id="btnPickFw" class="btn-ghost" style="width:100%">Choose firmware file…</button>
+      </div>
+      <input id="fwInput" type="file" accept=".bin" class="hide">
+      <div id="log"></div>
+    </details>
+  </div>
+
+  <p class="foot">
+    Driver: the device must be bound to <b>WinUSB</b> (one-time Zadig setup per PC).
+    &nbsp;·&nbsp; <a href="reference/PROTOCOL.md">Protocol</a>
+  </p>
+</div>
+
+<script type="module">
+import { WchIsp } from './src/wch-isp.js';
+
+// Firmware served next to the page; can be overridden with the file picker.
+const FIRMWARE_URL = 'firmware/boot+04080000ec2f170f.bin';
+
+const $ = (id) => document.getElementById(id);
+const dot = $('dot'), statusText = $('statusText'), logEl = $('log');
+let firmware = null, firmwareName = '', isp = null;
+
+function log(msg) {
+  const t = new Date().toLocaleTimeString();
+  logEl.textContent += `[${t}] ${msg}\n`;
+  logEl.scrollTop = logEl.scrollHeight;
+}
+function setStatus(text, kind) {
+  const box = $('statusBox');
+  if (!text) { box.classList.add('hide'); return; }
+  box.classList.remove('hide');
+  statusText.textContent = text;
+  dot.className = 'dot' + (kind ? ' ' + kind : '');
+}
+function setBar(fill, pct, label) { $(fill).style.width = Math.round(pct * 100) + '%'; $(label).textContent = Math.round(pct * 100) + '%'; }
+
+// Animated arrow cue: point at the primary button, hidden while busy/done.
+function cue(mode) {
+  const c = $('cue'), btn = $('btnConnect');
+  if (mode === 'start') { c.className = 'cue show'; $('cueLabel').textContent = 'Start here'; btn.classList.add('pulse'); }
+  else if (mode === 'again') { c.className = 'cue show'; $('cueLabel').textContent = 'Press again'; btn.classList.add('pulse'); }
+  else { c.className = 'cue'; btn.classList.remove('pulse'); }
+}
+function showPlusModal() { $('plusModal').classList.remove('hide'); }
+function hidePlusModal() { $('plusModal').classList.add('hide'); }
+// Guide card has two mutually-exclusive steps so the operator sees one task at a time:
+//   'plug' — illustration "hold + and plug in" (before the pop-up)
+//   'pick' — arrow "select your device and click Connect" (while the pop-up is open)
+//   'off'  — hidden (during flashing)
+function guideStep(step) {
+  const card = $('guideCard');
+  if (step === 'off') { card.classList.add('hide'); return; }
+  card.classList.remove('hide');
+  $('stepPlug').classList.toggle('hide', step !== 'plug');
+  $('stepDetected').classList.toggle('hide', step !== 'detected');
+  $('stepPick').classList.toggle('hide', step !== 'pick');
+}
+
+// Auto-detect the board: while idle, swap the animation for a green "detected" check as soon
+// as the board is present in BOOT (works thanks to the WebUsbAllowDevicesForUrls policy —
+// getDevices()/connect events see it without a picker). Suppressed while busy flashing.
+let busy = false;
+let updateDone = false;   // once an update succeeds, keep the guide hidden until page reload
+async function bootDevicePresent() {
+  if (!('usb' in navigator)) return false;
+  try {
+    const devs = await navigator.usb.getDevices();
+    return devs.some((d) => (d.vendorId === 0x4348 || d.vendorId === 0x1a86) && d.productId === 0x55e0);
+  } catch (_) { return false; }
+}
+async function refreshDetected() {
+  if (busy) return;
+  if (updateDone) { guideStep('off'); $('btnConnect').disabled = true; cue('off'); return; }
+  const present = await bootDevicePresent();
+  guideStep(present ? 'detected' : 'plug');
+  $('btnConnect').disabled = !present;   // Update is active only once the board is detected
+  cue(present ? 'start' : 'off');        // pulse the button / arrow only when it's actionable
+}
+
+if (!('usb' in navigator)) { $('unsupported').classList.remove('hide'); cue('off'); }
+
+async function loadFirmware() {
+  if (firmware) return firmware;
+  const res = await fetch(FIRMWARE_URL);
+  if (!res.ok) throw new Error('Could not load firmware: HTTP ' + res.status +
+    ' (choose a file under “Show details”).');
+  firmware = new Uint8Array(await res.arrayBuffer());
+  firmwareName = FIRMWARE_URL.split('/').pop();
+  showFwMeta();
+  return firmware;
+}
+function showFwMeta() {
+  $('fwMeta').textContent = firmware
+    ? `Firmware: ${firmwareName} · ${firmware.length.toLocaleString('en-US')} bytes` : '';
+}
+loadFirmware()
+  .then(() => log('Firmware loaded: ' + firmwareName + ' (' + firmware.length + ' bytes)'))
+  .catch((e) => log(e.message));
+
+$('btnPickFw').onclick = () => $('fwInput').click();
+$('fwInput').onchange = async (e) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  firmware = new Uint8Array(await f.arrayBuffer());
+  firmwareName = f.name;
+  showFwMeta();
+  log('Firmware file chosen: ' + firmwareName + ' (' + firmware.length + ' bytes)');
+};
+
+// Primary action: connect (browser picker, once) then flash automatically. Keep "+" held.
+// A read-protected (factory) board takes two passes: pass 1 removes protection and wipes flash,
+// then the operator re-picks the board (WebUSB drops the permission across the reset) and pass 2
+// writes the firmware.
+$('btnConnect').onclick = connectAndFlash;
+
+async function connectAndFlash() {
+  busy = true;
+  cue('off');
+  $('btnConnect').disabled = true;
+  isp = new WchIsp({ log, progress: onProgress });
+  // With the WebUsbAllowDevicesForUrls policy the board is already granted → no pop-up, no pick
+  // guidance. Only show the "pick device" arrow when a picker will actually appear.
+  const granted = await isp.probeGranted();
+  guideStep(granted ? 'off' : 'pick');
+  setStatus(granted ? 'Connecting to the board…'
+    : 'Select your device in the pop-up and click Connect…', 'busy');
+  try {
+    const label = await isp.connect();
+    log('Connected: ' + label);
+  } catch (e) {
+    log('Connection error: ' + e.message);
+    setStatus(describeConnectError(e), 'err');
+    cue('start');
+    isp = null;
+    busy = false;
+    refreshDetected();      // back to animation / detected
+    return;
+  }
+  guideStep('off');
+  await runFlash();
+}
+
+function describeConnectError(e) {
+  const m = (e && e.message) || '';
+  if (/No device selected/i.test(m)) return 'No device selected. Hold “+”, plug in the cable, and try again.';
+  if (/access|claim|SecurityError|denied/i.test(m))
+    return 'Could not open the device — it likely needs the WinUSB driver (Zadig).';
+  return 'Connection error: ' + m;
+}
+
+function onProgress(phase, done, total) {
+  const pct = total ? done / total : 0;
+  if (phase === 'write') setBar('fProg', pct, 'pProg');
+  else if (phase === 'verify') setBar('fVer', pct, 'pVer');
+}
+
+async function runFlash() {
+  if (!isp || !isp.device) { setStatus('Press “Update” first.', 'err'); cue('start'); guideStep('plug'); return; }
+  busy = true;
+  cue('off'); guideStep('off');
+  $('btnConnect').disabled = true;
+  $('bars').classList.add('show');
+  setBar('fErase', 0, 'pErase'); setBar('fProg', 0, 'pProg'); setBar('fVer', 0, 'pVer');
+  try {
+    await loadFirmware();
+    // Impossible-to-miss prompt: the download resets the chip mid-way, so "+" must be held.
+    showPlusModal();
+    setStatus('', 'busy');
+
+    // Hook erase progress: the board is back in BOOT by now (deprotect reconnect done), so drop
+    // the "press +" modal and switch to the progress view.
+    const origErase = isp.erase.bind(isp);
+    isp.erase = async (len) => {
+      hidePlusModal();
+      setStatus('Updating firmware… almost done.', 'busy');
+      setBar('fErase', 0.15, 'pErase'); await origErase(len); setBar('fErase', 1, 'pErase');
+    };
+
+    const res = await isp.flash(firmware);
+    if (res && res.deprotected) {
+      // Auto-reconnect couldn't grab the board (e.g. "+" released). Fall back to another press.
+      isp = null;
+      setStatus('Read-protect removed. HOLD “+” and press “Update” again to finish the download.', 'busy');
+      cue('again');
+    } else {
+      updateDone = true;    // hide the guide card and keep it hidden until page reload
+      setStatus('Done ✓ Firmware updated — you can release “+” now.', 'ok');
+      cue('off');
+      confetti();
+    }
+  } catch (e) {
+    log('ERROR: ' + e.message);
+    setStatus('Error: ' + e.message, 'err');
+    cue('start');
+  } finally {
+    hidePlusModal();
+    busy = false;
+    refreshDetected();      // updates the guide card AND the Update button's enabled state
+  }
+}
+
+// Lightweight self-contained confetti burst on success.
+function confetti() {
+  const cv = document.createElement('canvas');
+  cv.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:100';
+  cv.width = window.innerWidth; cv.height = window.innerHeight;
+  document.body.appendChild(cv);
+  const ctx = cv.getContext('2d');
+  const colors = ['#38c26b', '#3b9bf0', '#f5b23b', '#ec5b60', '#a970ff', '#ffffff'];
+  const cx = cv.width / 2, cy = cv.height * 0.32;
+  const parts = Array.from({ length: 160 }, (_, i) => ({
+    x: cx, y: cy,
+    vx: (Math.random() - 0.5) * 16, vy: Math.random() * -14 - 3,
+    g: 0.30 + Math.random() * 0.20, c: colors[i % colors.length],
+    s: 5 + Math.random() * 6, rot: Math.random() * 6.28, vr: (Math.random() - 0.5) * 0.5,
+  }));
+  const start = performance.now();
+  (function frame(t) {
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    let alive = false;
+    for (const p of parts) {
+      p.vy += p.g; p.x += p.vx; p.y += p.vy; p.rot += p.vr;
+      if (p.y < cv.height + 30) alive = true;
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+      ctx.fillStyle = p.c; ctx.fillRect(-p.s / 2, -p.s / 2, p.s, p.s * 0.62); ctx.restore();
+    }
+    if (t - start < 4000 && alive) requestAnimationFrame(frame);
+    else cv.remove();
+  })(start);
+}
+
+if ('usb' in navigator) {
+  navigator.usb.addEventListener('connect', () => refreshDetected());
+  navigator.usb.addEventListener('disconnect', (e) => {
+    if (isp && e.device === isp.device) log('Device disconnected from USB.');
+    refreshDetected();
+  });
+}
+refreshDetected();   // reflect whether a board is already plugged in (in BOOT)
+</script>
+</body>
+</html>
