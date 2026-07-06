@@ -1,0 +1,10 @@
+# The signed .cat stores the SHA256 of the INF's exact bytes — git must NEVER convert line
+# endings on the driver package or pnputil rejects it ("hash not present in catalog file").
+driver-setup/SONR_WinUSB.inf     binary
+driver-setup/SONR_WinUSB.cat     binary
+driver-setup/SONR_WinUSB.cer     binary
+driver-setup/interface-guid.txt  binary
+firmware/**              binary
+reference/opttemplate.bin binary
+enable-webusb-auto.reg   binary
+sonr-music2-setup.zip    binary
