@@ -427,10 +427,16 @@ async function bootDevicePresent() {
 async function refreshDetected() {
   if (busy) return;
   if (updateDone) { guideStep('off'); $('btnConnect').disabled = true; cue('off'); return; }
+  if (!('usb' in navigator)) { $('btnConnect').disabled = true; cue('off'); return; }
   const present = await bootDevicePresent();
   guideStep(present ? 'detected' : 'plug');
-  $('btnConnect').disabled = !present;   // Update is active only once the board is detected
-  cue(present ? 'start' : 'off');        // pulse the button / arrow only when it's actionable
+  // Update must stay clickable even when getDevices() can't see the board yet. With the
+  // WebUsbAllowDevicesForUrls policy (Windows) getDevices() reveals the board and the green
+  // "detected" check appears; WITHOUT it (macOS/Linux) the device is invisible until the user
+  // picks it in the browser pop-up — and that pop-up needs this very click. connect() tries
+  // getDevices() first and falls back to the picker, so enabling it always is safe on all OSes.
+  $('btnConnect').disabled = false;
+  cue('start');                          // the button is the next action on every platform
 }
 
 if (!('usb' in navigator)) { $('unsupported').classList.remove('hide'); cue('off'); }
@@ -500,7 +506,9 @@ function describeConnectError(e) {
   const m = (e && e.message) || '';
   if (/No device selected/i.test(m)) return 'No device selected. Hold “+”, plug in the cable, and try again.';
   if (/access|claim|SecurityError|denied/i.test(m))
-    return 'Could not open the device — it likely needs the WinUSB driver (Zadig).';
+    return IS_MAC
+      ? 'Could not open the device. Check the LED is OFF (board in BOOT) and no other app is using it, then try again.'
+      : 'Could not open the device — it likely needs the WinUSB driver (run Setup-This-PC.cmd from the setup zip).';
   return 'Connection error: ' + m;
 }
 
