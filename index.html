@@ -223,9 +223,10 @@
   <div class="card">
     <h2>How to flash</h2>
     <ol class="steps">
-      <li><b>First time on this PC only:</b> download <a href="sonr-music2-setup.zip">sonr-music2-setup.zip</a>,
-          unzip it and run <b>Setup-This-PC.cmd</b> (approve the admin prompt), then fully restart your
-          browser. This installs the USB driver and browser access — skip it on PCs already set up.</li>
+      <li id="setupStep"><b>Windows — first time on this PC only:</b> download
+          <a href="sonr-music2-setup.zip">sonr-music2-setup.zip</a>, unzip it and run
+          <b>Setup-This-PC.cmd</b> (approve the admin prompt), then fully restart your browser.
+          This installs the USB driver and browser access — skip it on PCs already set up.</li>
       <li><span class="hold">Hold the “+” button</span> and plug in the USB cable.</li>
       <li>Check the device LED — it must be <b>off</b>. If it's lit, unplug and reconnect while
           holding “+”.</li>
@@ -362,6 +363,16 @@ import { WchIsp } from './src/wch-isp.js';
 const FIRMWARE_URL = 'firmware/boot+04080000ec2f170f.bin';
 
 const $ = (id) => document.getElementById(id);
+
+// Platform-aware first step: Windows needs the WinUSB setup; macOS needs nothing.
+const PLATFORM = ((navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '').toLowerCase();
+const IS_MAC = PLATFORM.includes('mac') || /macintosh/i.test(navigator.userAgent);
+if (IS_MAC) {
+  const s = document.getElementById('setupStep');
+  if (s) s.innerHTML = '<b>macOS — nothing to install.</b> Just open this page in <b>Chrome</b> or ' +
+    '<b>Edge</b> (no driver, no admin). Go straight to the steps below.';
+}
+
 const dot = $('dot'), statusText = $('statusText'), logEl = $('log');
 let firmware = null, firmwareName = '', isp = null;
 
