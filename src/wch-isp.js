@@ -59,6 +59,11 @@ export class WchIsp {
     this.chip = null;      // { name, flash }
     this.uid = null;       // Uint8Array(8)
     this.bootVer = null;
+    // Whether the browser has STANDING permission (WebUsbAllowDevicesForUrls policy or a prior
+    // grant) so getDevices() can re-find the board after the mid-flash reset. Set by the UI from
+    // probeGranted(). When false (typical macOS/Linux without the policy), skip the futile
+    // ~20 s reconnect poll and go straight to the two-pass "press Update again" fallback.
+    this.autoReconnect = true;
   }
 
   // ---- USB plumbing -------------------------------------------------------
@@ -372,8 +377,10 @@ export class WchIsp {
       this.log('Deprotect done — resetting chip. KEEP HOLDING “+” so it re-enters BOOT…');
       await this._ispEnd(1);
       // Best case: the board re-enters BOOT (because "+" is held) and we grab it silently →
-      // programming continues in this same call, no second click or pop-up.
-      const back = await this.reconnectAfterReset();
+      // programming continues in this same call, no second click or pop-up. Only worth polling
+      // when we actually hold standing permission; otherwise getDevices() can never see the
+      // re-enumerated (serial-less) board, so skip straight to the two-pass fallback.
+      const back = this.autoReconnect ? await this.reconnectAfterReset() : false;
       if (back) {
         await this.identify();
         await this.readConfigAll();             // refresh UID for the XOR key

@@ -483,6 +483,7 @@ async function connectAndFlash() {
   // With the WebUsbAllowDevicesForUrls policy the board is already granted → no pop-up, no pick
   // guidance. Only show the "pick device" arrow when a picker will actually appear.
   const granted = await isp.probeGranted();
+  isp.autoReconnect = granted;   // no standing permission → skip the futile mid-flash reconnect poll
   guideStep(granted ? 'off' : 'pick');
   setStatus(granted ? 'Connecting to the board…'
     : 'Select your device in the pop-up and click Connect…', 'busy');
@@ -544,7 +545,8 @@ async function runFlash() {
     if (res && res.deprotected) {
       // Auto-reconnect couldn't grab the board (e.g. "+" released). Fall back to another press.
       isp = null;
-      setStatus('Read-protect removed. HOLD “+” and press “Update” again to finish the download.', 'busy');
+      setStatus('Read-protect removed. Keep holding “+”, press “Update” again and re-select the ' +
+        'device to finish — this second pass writes the firmware.', 'busy');
       cue('again');
     } else {
       updateDone = true;    // hide the guide card and keep it hidden until page reload
