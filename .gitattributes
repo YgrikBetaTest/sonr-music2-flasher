@@ -1,10 +1,11 @@
-# The signed .cat stores the SHA256 of the INF's exact bytes — git must NEVER convert line
-# endings on the driver package or pnputil rejects it ("hash not present in catalog file").
-driver-setup/SONR_WinUSB.inf     binary
-driver-setup/SONR_WinUSB.cat     binary
-driver-setup/SONR_WinUSB.cer     binary
-driver-setup/interface-guid.txt  binary
-firmware/**              binary
-reference/opttemplate.bin binary
-enable-webusb-auto.reg   binary
-sonr-music2-setup.zip    binary
+# Driver package is byte-exact: SONR_WinUSB.cat stores the SHA-256 of the .inf bytes.
+# If git ever normalizes the .inf line endings (CRLF->LF), the hash stops matching the signed
+# catalog and pnputil fails with 0x800B0100 "hash not present in catalog". Treat as binary.
+*.inf   -text
+*.cat   -text
+*.cer   -text
+*.bin   -text
+*.mobileconfig -text
+
+# The WebUSB policy .reg is UTF-16LE; never touch its bytes either.
+*.reg   -text
